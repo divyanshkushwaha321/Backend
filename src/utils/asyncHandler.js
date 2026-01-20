@@ -1,3 +1,6 @@
+// The role of this file is to make a method and export it.
+
+
 const asyncHandler = (fn) => async (req, res, next) => {
     try{
         await fn(req, res, next)
