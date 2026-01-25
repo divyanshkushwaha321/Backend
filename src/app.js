@@ -9,9 +9,17 @@ app.use(cors({                         // app.use(cors): Applies the CORS middle
     credentials: true                  // Allows sending credentials such as: Cookies, Authorization headers, Sessions
 }))
 
-app.use(express.json({limit:"30kb"}))  // limit to set data, earlier for this we have to install body-parser, now it is In-build.
-app.use(express.urlencoded({extended: true, limit:"30kb"}))
+app.use(express.json({limit:"16kb"}))  // limit to set data, earlier for this we have to install body-parser, now it is In-build.
+app.use(express.urlencoded({extended: true, limit:"16kb"}))
 app.use(express.static("public"))  // used to store data like images, pdf etc. in public folder.
 app.use(cookieParser())
+
+
+
+import userRouter from "./routes/user.routes.js"
+
+// Routes declaration
+app.use("/api/users", userRouter)
+
 
 export {app}

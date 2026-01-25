@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import connectDB from "./db/index.js";
 import "dotenv/config";
+import { app } from "./app.js";
 
 connectDB()           // asynchronous method always return a Promise.
 .then(() => {
     app.listen(process.env.PORT || 8000, () => {
-        console.log(`Server running on PORT :${process.env.PORT}`);
+        console.log(`Server running on PORT : ${process.env.PORT}`);
     })
 })
 .catch((error) => {
