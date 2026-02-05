@@ -63,7 +63,7 @@ const registerUser = asyncHandler (async (req, res) => {
    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
       coverImageLocalPath = req.files.coverImage[0].path
    }
-   
+
    if(!avatarLocalPath){
       throw new ApiError(400, "Avatar file is required")
    }
@@ -193,7 +193,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     if(!User){
       throw new ApiError(401, "Invalid Refresh Token")
     }
-  
+
     if(incomingRefreshToken !== User?.refreshToken){
         throw new ApiError(401, "Refresh Token is expired or used")
     }
@@ -322,6 +322,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
    }
 
    const User = await user.findByIdAndUpdate(
+      
       req.user?._id,
       {
          $set:{
