@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const playlistSchema = new Schema({
 
@@ -22,4 +22,4 @@ const playlistSchema = new Schema({
 
 }, {timestamps: true})
 
-const Playlist = mongoose.model("Playlist", playlistSchema)
+export const Playlist = mongoose.model("Playlist", playlistSchema)

@@ -9,7 +9,7 @@ const videoSchema = new Schema(
             type: String,
             required: true
         },
-        thumbmail:{
+        thumbnail:{
             type: String,
             required: true
         },
