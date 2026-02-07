@@ -81,6 +81,9 @@ const getAllVideos = asyncHandler(async (req, res) => {
 const publishAVideo = asyncHandler(async (req, res) => {
     const { title, description} = req.body
     // TODO: get video, upload to cloudinary, create video
+    if(!title || !description){
+        throw new ApiError(404, "All fields are required")
+    }
     console.log("req.body",req.body);
     
     const videofileLocalPath = req.files?.videoFile[0].path
@@ -112,33 +115,120 @@ const publishAVideo = asyncHandler(async (req, res) => {
     })
 
     console.log("video: ", video);
-
-    const videoResponse = await Video.findById(video._id).select("-owner -__v")
     
     return res
     .status(201)
-    .json(new ApiResponse(201, videoResponse, "Video published successfully"))
+    .json(new ApiResponse(201, video, "Video published successfully"))
 })
 
+
 const getVideoById = asyncHandler(async (req, res) => {
+
     const { videoId } = req.params
     //TODO: get video by id
+    // console.log("videoId: ", videoId);
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400, "Video id is required")
+    }
+
+   const video = await Video.findById(videoId)
+    // console.log("Video: ",video);
+    
+   if(!video){
+    throw new ApiError(404,"Cannot fetch video")
+   }
+
+   return res
+   .status(200)
+   .json(new ApiResponse(200, video, "Video fetched successfully"))
+
 })
+
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: update video details like title, description, thumbnail
 
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400, "Invalid video id")
+    }
+    //TODO: update video details like title, description, thumbnail
+    const { title, description } = req.body
+
+    if(!title || !description){
+        throw new ApiError(404, "All fields are required")
+    }
+
+    const existingVideo = await Video.findById(videoId)
+    if (!existingVideo) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    // Authorization check
+    // if (existingVideo.owner.toString() !== req.user._id.toString()) {
+    //     throw new ApiError(403, "You are not allowed to update this video")
+    // }
+   
+    const thumbnailLocalPath = req.file?.path
+
+    if(!thumbnailLocalPath){
+      throw new ApiError(400, "Thumbnail file is missing")
+    }
+
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if(!thumbnail?.url){
+        throw new ApiError(400, "Error while uploading on thumbnail")
+    }
+
+    const video = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $set: {
+                title,
+                description,
+                thumbnail: thumbnail.url
+            }
+        },
+        {new: true}
+    )
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video details updated successfully"))
 })
+
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400, "Invalid video id")
+    }
     //TODO: delete video
+
+    const video = await Video.findById(videoId)
+
+    if (!video) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    // if (video.owner.toString() !== req.user._id.toString()) {
+    //     throw new ApiError(403, "You are not allowed to delete this video")
+    // }
+
+   await Video.findByIdAndDelete(videoId)
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Video deleted successfully"))
 })
+
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+
 })
+
 
 export {
     getAllVideos,
