@@ -150,7 +150,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     }
     catch(err){
 
-        if (uploadedVideo?.public_id) {
+        if (uploadedVideo?.public_id) {   // public_id is the unique identifier assigned to the uploaded file by Cloudinary.
             await cloudinary.uploader.destroy(
                 uploadedVideo.public_id,
                 { resource_type: "video" }
@@ -192,31 +192,152 @@ const getVideoById = asyncHandler(async (req, res) => {
 
 
 const updateVideo = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
+    
+    const { videoId } = req.params;
+    const { title, description } = req.body;
 
     if(!isValidObjectId(videoId)){
-        throw new ApiError(400, "Invalid video id")
+        throw new ApiError(400, "Invalid video id.")
     }
     //TODO: update video details like title, description, thumbnail
-    const { title, description } = req.bdy
     
-    
+    const thumbnailLocalPath = req.file?.path;
 
+    const updateFields = {};
 
-    
+    if(title !== undefined){
+        if(typeof title !== "string" || !title.trim()){
+            throw new ApiError(400, "Invalid Title");
+        }
+        updateFields.title = title.trim();
+    }
 
+    if(description !== undefined){
+        if(typeof description !== "string" || !description.trim()){
+            throw new ApiError(400, "Invalid Description");
+        }
+        updateFields.description = description.trim();
+    }
+
+    // Check if at least one field is provided
+    if(!Object.keys(updateFields).length && !thumbnailLocalPath){
+        throw new ApiError(400, "Atleast provide one field to update.")
+    }
     
+    let uploadedThumbnail;
+
+    try{
+        if(thumbnailLocalPath){
+
+            uploadedThumbnail = await uploadOnCloudinary(thumbnailLocalPath, "image");
+
+            if (!uploadedThumbnail?.secure_url || !uploadedThumbnail?.public_id) {
+                throw new ApiError(500, "Thumbnail upload failed");
+            }
+
+            updateFields.thumbnail = uploadedThumbnail.secure_url;
+            updateFields.thumbNailPublicId = uploadedThumbnail.public_id;
+        }
+        // update video in mongodb
+        const updatedVideo = await Video.findOneAndUpdate(
+            {
+                _id: videoId,
+                owner: req.user._id
+            },
+            {$set: updateFields},
+            {
+                new:true,
+                runValidators: true
+            }
+        );
+        
+        if(!updateVideo){
+            throw new ApiError(404, "Video not found");
+        }
+        
+         //  delete old thumbnail after successful update
+        if (uploadedThumbnail && video.thumbnailPublicId) {
+            try {
+                await cloudinary.uploader.destroy(
+                    video.thumbnailPublicId,
+                    { resource_type: "image" }
+                );
+            } 
+            catch (error) {
+                console.error("Old thumbnail deletion failed:", error);
+            }
+        }
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                updatedVideo,
+                "Video updated successfully"
+            )
+        );
+
+    }
+    catch(err){
+        // Delete newly uploaded thumbnail if database update fails
+        if (uploadedThumbnail?.public_id) {
+            try {
+                await cloudinary.uploader.destroy(
+                    uploadedThumbnail.public_id, 
+                    { resource_type: "image" }
+                );
+            } 
+            catch (cleanupError) {
+                console.error("Thumbnail cleanup failed:", cleanupError);
+            }
+        }
+        throw err;
+    }
+
 })
 
 
 const deleteVideo = asyncHandler(async (req, res) => {
+    
     const { videoId } = req.params
 
     if(!isValidObjectId(videoId)){
         throw new ApiError(400, "Invalid video id")
     }
-    //TODO: delete video
 
+    // find the video using videdId and owner of video
+    const video = await Video.findOne({
+        _id: videoId,
+        owner: req.user._id
+    })
+
+    try{
+
+        // delete the video from cloudinary
+        if(video.videoPublicId){
+            cloudinary.uploader.destroy(
+                video.videoPublicId,
+                { resource_type: "video" }
+            )
+        }
+        // delete the thumbnail from cloudinary
+        if(video.thumbNailPublicId){
+            cloudinary.uploader.destroy(
+                video.thumbNailPublicId,
+                { resource_type: "image" }
+            )
+        }
+    }
+    catch(err){
+        console.log("Cloudinary file deletion failed:", err)
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {},
+            "Video deleted successfully"
+        )
+    );
 })
 
 
@@ -231,6 +352,5 @@ export {
     getVideoById,
     updateVideo,
     deleteVideo,
-    togglePublishStatus,
-    publishAVideo
+    togglePublishStatus
 }
