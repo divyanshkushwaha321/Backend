@@ -253,7 +253,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
    const{fullname, email} = req.body
 
-   if(!fullname || !email){
+   if(!fullname ){
       throw new ApiError(400, "All fields are required")
    }
 
@@ -262,7 +262,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
       {
          $set:{
             fullname,
-            email: email
          }
       },
       {new: true}
